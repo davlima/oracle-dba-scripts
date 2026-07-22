@@ -28,6 +28,10 @@ ORDER BY username;
 ALTER SESSION SET CONTAINER = CDB$ROOT;
 
 -- 8. Consulta unificada (executada no CDB$ROOT) para listar schemas de PDBs específicos
+    SET LINESIZE 150 PAGESIZE 100
+    COLUMN pdb_name FORMAT A15
+    COLUMN username FORMAT A30
+
 SELECT c.name AS pdb_name, u.username, u.created
 FROM cdb_users u
 JOIN v$containers c ON u.con_id = c.con_id
