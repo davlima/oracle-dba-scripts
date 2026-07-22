@@ -1,0 +1,64 @@
+# ====================================================================
+# Gitignore - Oracle Database Repository
+# ====================================================================
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Oracle Data Pump & Database Dumps
+*.dmp
+*.dpdump
+*.exp
+*.imp
+*.expdp
+*.impdp
+*.sql.gz
+*.tar.gz
+*.bak
+*.bkp
+*.old
+
+# Oracle Logs, Traces & Diagnostics
+*.log
+*.out
+*.status
+*.trc
+*.trm
+*.audit
+alert_*.log
+sqlnet.log
+hc_*.dat
+ora_*.trc
+
+# Environment Variables & Secrets (TNS / Passwords / Keys)
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+*.pkcs12
+*.pfx
+tnsnames.ora
+listener.ora
+sqlnet.ora
+
+# Temporary Files
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+
+# IDE & Editor Configurations (VSCode, SQL Developer, IntelliJ)
+.vscode/
+.idea/
+.sqldeveloper/
+*.sublime-project
+*.sublime-workspace
