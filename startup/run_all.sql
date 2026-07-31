@@ -1,0 +1,11 @@
+@@../sqlplus/sqlplus_env.sql
+@@01_version.sql
+@@02_instance.sql
+@@03_database.sql
+@@04_pdbs.sql
+@@05_registry.sql
+@@06_invalid_objects.sql
+@@07_containers.sql
+@@08_services.sql
+@@09_parameters.sql
+@@10_instance_info.sql
