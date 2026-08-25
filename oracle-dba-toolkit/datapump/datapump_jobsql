@@ -1,0 +1,17 @@
+SELECT job_name, operation, job_mode, state, degree
+FROM dba_datapump_jobs;
+
+SELECT owner_name, job_name, operation, job_mode, state, degree, attached_sessions
+FROM dba_datapump_jobs;
+
+SELECT sid, serial#, opname, sofar, totalwork,
+       ROUND(sofar / totalwork * 100, 2) AS pct_concluido,
+       time_remaining AS seg_restantes, message
+FROM v$session_longops
+WHERE (opname LIKE '%EXPORT%' OR opname LIKE '%IMPORT%')
+  AND totalwork > 0;
+
+  SELECT s.sid, s.serial#, s.username, s.status, p.spid, s.osuser, s.program
+FROM v$session s, v$process p
+WHERE s.paddr = p.addr
+  AND s.program LIKE '%DW%';
