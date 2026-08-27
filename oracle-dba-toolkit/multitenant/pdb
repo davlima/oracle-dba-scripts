@@ -1,0 +1,8 @@
+SELECT c.con_id,
+       c.name,
+       c.open_mode,
+       c.restricted,
+       c.dbid,
+       c.guid
+  FROM  v$containers c
+ ORDER BY c.con_id;
