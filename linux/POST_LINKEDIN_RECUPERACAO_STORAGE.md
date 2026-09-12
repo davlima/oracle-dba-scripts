@@ -2,39 +2,42 @@
 
 ---
 
-🚨 **"O disco de dados não monta no boot": O que um susto com storage ensina sobre administração de bancos de missão crítica?**
+🚨 **"O disco de dados não monta e o fsck aborta": O que um susto com storage ensina sobre administração de bancos de missão crítica?**
 
-Muita gente associa o trabalho do DBA apenas a SQL, planos de execução e tuning de instâncias. Mas a verdade é incontornável: **o banco de dados pisa no chão do Sistema Operacional e do Storage.** Se a infraestrutura falhar por baixo, não existe query que resolva.
+Muita gente associa o trabalho do DBA apenas a queries SQL, planos de execução e parâmetros de banco. Mas a verdade é uma só: **o banco de dados pisa no chão do Sistema Operacional e do Storage.** Se o filesystem ou a LUN corrompem por baixo, não existe query que resolva.
 
-Hoje enfrentei um incidente clássico em laboratório: após um particionamento indevido, uma partição ext4 de **620 GB** contendo quase **400 GB de backups e projetos** parou de montar. O boot travou no systemd com `[FAILED]`.
+Hoje passei por um incidente real em laboratório: após um redimensionamento incorreto, uma partição ext4 de **620 GB** contendo quase **400 GB de backups, bases e projetos de estudo** simplesmente parou de montar.
 
-🔍 **O Diagnóstico:**
-A partição física havia sido encolhida para **157 milhões de blocos**, mas o filesystem ainda esperava os **163 milhões originais**. Resultado: geometria inconsistente, superblocks dessincronizados e recusa total de montagem.
+🔍 **O Diagnóstico (Imagem 1):**
+A partição física foi encolhida na tabela GPT para **157 milhões de blocos**, mas o filesystem ext4 ainda esperava os **163 milhões originais**. O `e2fsck`, `resize2fs` e `debugfs` recusavam qualquer operação acusando inconsistência crítica de geometria.
 
-A tentação de muitos numa hora dessas é rodar comandos de força bruta (`fsck -fy`) para "tentar fazer montar logo". 
+A primeira tentação de muitos numa crise é tentar forçar o sistema a aceitar o tamanho menor com comandos de reparo automático (`fsck -fy`). 
 
-💡 **A Decisão que Salvou os Dados (A Mentalidade de DBA):**
-Antes de qualquer alteração destrutiva, rodamos a verificação em **modo simulação somente-leitura (`e2fsck -fn`)**. 
+🔬 **A Engenharia Reversa (Imagem 2):**
+Varremos os metadados do ext4 diretamente nos blocos do disco e localizamos as cópias de segurança do superblock no Grupo 1 (bloco 32768). O layout original estava intacto: eram 40.960.000 inodes distribuídos em 5.000 grupos que simplesmente não cabiam fisicamente no corte feito.
 
-O relatório na tela foi um soco no estômago: se tivéssemos forçado a partição menor com `-y`, o utilitário iria expurgar dezenas de gigabytes de diretórios vitais (`/Backup`, `/Projetos` e bases de teste) que haviam ficado na faixa cortada pelo redimensionamento.
+💡 **O Ponto de Virada: A Prudência do DBA (Imagem 3):**
+Antes de qualquer alteração destrutiva, rodamos o teste em **modo simulação somente-leitura (`e2fsck -fn`)**.
+O relatório na tela foi um banho de água fria: se tivéssemos forçado o reparo na partição cortada, o fsck iria expurgar dezenas de gigabytes de diretórios vitais (`/Backup`, `/DBAOCM`, `/Projetos`) que haviam ficado na faixa do espaço reduzido.
 
-🔧 **A Solução Técnica e Cirúrgica:**
-1. **Inspeção de metadados:** Identificamos que o filesystem continha 40.960.000 inodes distribuídos em 5.000 grupos que não cabiam fisicamente no corte feito.
-2. **Reversão de geometria:** Em vez de podar dados legítimos, recalculamos os setores GPT no `parted` e devolvemos a partição para o seu limite original de 163M blocos.
-3. **Restauração de metadados:** Copiamos o superblock íntegro a partir dos blocos de backup do Grupo 1 (bloco 32768) diretamente para o bloco primário.
-4. **Reparo consistente:** O `e2fsck` passou com sucesso por todas as 5 fases, reconstruindo os diretórios impactados.
+🔧 **A Solução Cirúrgica:**
+1. Em vez de amputar os dados, recalculamos os limites na tabela GPT via `parted` e devolvemos a partição para o seu tamanho original de 163M blocos.
+2. Restauramos o superblock íntegro do backup do Grupo 1 no bloco primário.
+3. Executamos o `e2fsck`, que passou com sucesso por todas as 5 fases reparando apenas entradas de diretórios afetadas.
 
-Resultado: **Partição montada com sucesso e 100% dos 397 GB preservados intactos.**
+🏆 **O Resultado (Imagem 4):**
+Partição `/dev/sdb9` montada em `/dados`, **100% dos 397 GB preservados intactos** com todas as pastas e bancos íntegros.
 
-🎯 **Principais lições para quem cuida de bancos de dados:**
-1. **Nunca subestime o `-n` (no-write):** Antes de autorizar correções automáticas em storage ou filesystems, sempre simule o impacto.
-2. **DBA precisa entender de Kernel e Storage:** LUNs, ASM, filesystems, offsets e tabelas de partição não são "assunto só do time de infra". Em incidentes graves, esse conhecimento economiza horas de downtime e evita perda de dados irreversível.
-3. **Dados vêm primeiro:** Sistemas operacionais a gente reinstala em minutos; dados de negócio sem backup não voltam.
+---
+🎯 **3 Lições essenciais para quem cuida de bancos de dados:**
+1. **Nunca subestime o modo `-n` (simulação):** Em momentos de crise, sempre simule o impacto antes de aprovar gravações destrutivas.
+2. **DBA precisa dominar Linux e Storage:** Entender sobre LUNs, ASM, partições, superblocks e inodes separa o operador básico do especialista que salva o ambiente de um desastre.
+3. **Dados vêm primeiro:** Sistemas operacionais a gente reinstala em 15 minutos; dados de negócio sem backup não voltam.
 
-Documentei todos os passos técnicos, comandos de troubleshooting e scripts de validação no meu repositório:
+Documentei todos os passos técnicos, comandos e scripts no meu repositório:
 👉 https://github.com/davlima/oracle-dba-scripts/blob/main/linux/RECUPERACAO_PARTICAO_EXT4.md
 
-Já passou por uma situação onde um comando no terminal quase levou gigabytes de dados embora? Como foi a recuperação?
+Já passou por uma situação de frio na barriga onde um comando quase levou gigabytes de dados embora? Como foi a recuperação?
 
 ---
 #OracleDBA #Linux #Storage #Sysadmin #DevOps #Database #DataRecovery #Infrastructure #ext4 #Troubleshooting
