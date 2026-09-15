@@ -22,19 +22,19 @@
 
 ```bash
 lsblk -f
-\```
+```
 
 ### Ver erros do kernel relacionados ao disco
 
 ```bash
 sudo dmesg | grep -iE "sda|sdb|nvme|I/O error|buffer error" | tail -30
-\```
+```
 
 ### Verificar estado do filesystem
 
 ```bash
 sudo dumpe2fs -h /dev/sdXN | grep -E "state|error|block count|mount count"
-\```
+```
 
 > Substitua `/dev/sdXN` pelo device correto (ex: `/dev/sdb9`).
 
@@ -48,7 +48,7 @@ sudo dumpe2fs -h /dev/sdXN | grep -E "state|error|block count|mount count"
 O tamanho de filesystem (segundo o superblock) é XXXXXX blocks
 O tamanho físico do device é de YYYYYY blocks
 Ou o superblock ou a tabela de partição aparentam estar corrompidos!
-\```
+```
 
 **Causa:** A partição foi encolhida sem antes redimensionar o filesystem ext4.
 
@@ -57,14 +57,14 @@ Ou o superblock ou a tabela de partição aparentam estar corrompidos!
 ```bash
 sudo e2fsck -f /dev/sdXN 2>&1 | grep "tamanho físico"
 # Anote o número de blocks reportado (ex: 157467392)
-\```
+```
 
 Ou via `blockdev`:
 
 ```bash
 sudo blockdev --getsz /dev/sdXN   # retorna em setores de 512 bytes
 # divida por 8 para obter blocos de 4K
-\```
+```
 
 ### Passo 2 — Patch direto no superblock (campo `blocks_count`)
 
@@ -74,7 +74,7 @@ O campo `s_blocks_count_lo` fica no **byte 1028** da partição.
 
 ```bash
 sudo dd if=/dev/sdXN bs=1 skip=1028 count=4 2>/dev/null | xxd
-\```
+```
 
 **Converter o novo tamanho para little-endian hex (Python):**
 
@@ -90,13 +90,13 @@ print(struct.pack('<I', # 00c36209 \``` \x00\xC3\x62\x09 bytes: ex: n).hex()) �
 HEX_CALCULADO='\x00\xC3\x62\x09' 
 
 printf "$HEX_CALCULADO" | sudo dd of=/dev/sdXN bs=1 seek=1028 count=4 conv=notrunc
-\```
+```
 
 **Verificar que foi aplicado:**
 
 ```bash
 sudo dd if=/dev/sdXN bs=1 skip=1028 count=4 2>/dev/null | xxd
-\```
+```
 
 ### Passo 3 — Corrigir o checksum do superblock
 
@@ -154,13 +154,13 @@ with open(DEVICE, 'r+b') as f:
     f.seek(SB_OFF); f.write(bytes(psb))
 print(f"Novo checksum: 0x{new_csum:08X}")
 print("Proximo: sudo e2fsck -fy /dev/sdXN")
-\```
+```
 
 > ⚠️ **Nota de execução:** O script exige permissão de root para regravar o block device. Execute diretamente via interpretador:
 
 ```bash
 sudo python3 fix_superblock.py
-\```
+```
 
 ### Passo 4 — Reparar e montar
 
@@ -168,7 +168,7 @@ sudo python3 fix_superblock.py
 sudo e2fsck -fy /dev/sdXN
 sudo mkdir -p /ponto-de-montagem
 sudo mount /ponto-de-montagem
-\```
+```
 
 ---
 
@@ -184,13 +184,13 @@ sudo mke2fs -n /dev/sdXN
 
 # Usar o backup (ex: bloco 32768)
 sudo e2fsck -b 32768 /dev/sdXN
-\```
+```
 
 ### Forçar escrita de superblock a partir do backup
 
 ```bash
 sudo e2fsck -b 32768 -B 4096 /dev/sdXN
-\```
+```
 
 ---
 
@@ -200,13 +200,13 @@ sudo e2fsck -b 32768 -B 4096 /dev/sdXN
 
 ```bash
 sudo e2fsck -f /dev/sdXN
-\```
+```
 
 ### Reparar automaticamente sem interação
 
 ```bash
 sudo e2fsck -fy /dev/sdXN
-\```
+```
 
 ### Filesystem cheio impedindo montagem
 
@@ -216,7 +216,7 @@ sudo mount -o ro /dev/sdXN /mnt/rescue
 
 # Ver o que está ocupando espaço
 du -sh /mnt/rescue/* | sort -rh | head -20
-\```
+```
 
 ---
 
@@ -229,7 +229,7 @@ for disk in /dev/sda /dev/sdb /dev/nvme0n1; do
     echo "=== $disk ==="
     sudo smartctl -H $disk
 done
-\```
+```
 
 Resultado esperado: `SMART overall-health self-assessment test result: PASSED`
 
@@ -243,7 +243,7 @@ sudo smartctl -a /dev/sdb       # HD SATA 2
 sudo smartctl -x /dev/nvme0n1   # SSD NVMe (Extendido)
 # ou
 sudo nvme smart-log /dev/nvme0n1
-\```
+```
 
 ### Atributos SMART críticos
 
@@ -262,7 +262,7 @@ sudo nvme smart-log /dev/nvme0n1
 
 ```bash
 sudo smartctl -a /dev/sdb | grep -E "Reallocated|Pending|Uncorrectable|Spin_Retry"
-\```
+```
 
 ### Teste de superfície curto (~2 minutos)
 
@@ -270,7 +270,7 @@ sudo smartctl -a /dev/sdb | grep -E "Reallocated|Pending|Uncorrectable|Spin_Retr
 sudo smartctl -t short /dev/sdb
 # Aguarde e veja o resultado:
 sudo smartctl -a /dev/sdb | grep -A 10 "SMART Self-test log"
-\```
+```
 
 ### Teste de superfície longo (varre setor por setor — horas)
 
@@ -280,7 +280,7 @@ sudo smartctl -t long /dev/sdb
 
 # Acompanhar progresso
 watch -n 60 'sudo smartctl -a /dev/sdb | grep -E "progress|remaining"'
-\```
+```
 
 ### Badblock via `badblocks` (alternativa ao SMART)
 
@@ -290,7 +290,7 @@ sudo badblocks -sv /dev/sdb > ~/badblocks_sdb.txt 2>&1
 
 # Ver resultado
 cat ~/badblocks_sdb.txt
-\```
+```
 
 > ⚠️ Nunca rode `badblocks -w` (modo escrita) em um disco com dados — ele **apaga tudo**.
 
@@ -311,13 +311,13 @@ echo 'UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  /ponto  ext4  defaults  0  2' \
 # Recarregar e testar
 sudo systemctl daemon-reload
 sudo mount -a
-\```
+```
 
 ### Verificar fstab sem reiniciar
 
 ```bash
 sudo mount -a && echo "fstab OK" || echo "ERRO no fstab!"
-\```
+```
 
 ---
 
@@ -333,7 +333,7 @@ sudo resize2fs /dev/sdXN <novo_tamanho_em_unidades>
 
 # 2. Depois: encolher a partição (GParted, parted, fdisk)
 sudo parted /dev/sdX resizepart N <novo_fim>
-\```
+```
 
 ### Ao **AUMENTAR** a partição
 
@@ -343,7 +343,7 @@ sudo parted /dev/sdX resizepart N <novo_fim>
 
 # 2. Depois: expandir o filesystem (sem tamanho = usa todo o espaço disponível)
 sudo resize2fs /dev/sdXN
-\```
+```
 
 > 💡 O GParted geralmente faz ambos os passos automaticamente, mas em alguns casos pode pular o resize2fs. Sempre verifique após o redimensionamento.
 
