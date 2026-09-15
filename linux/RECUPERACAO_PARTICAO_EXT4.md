@@ -34,7 +34,9 @@ Ou via blockdev:Bashsudo blockdev --getsz /dev/sdXN   # retorna em setores de 51
 Passo 2 — Patch direto no superblock (campo blocks_count)O campo s_blocks_count_lo fica no byte 1028 da partição.Verificar o valor atual:Bashsudo dd if=/dev/sdXN bs=1 skip=1028 count=4 2>/dev/null | xxd
 Converter o novo tamanho para little-endian hex (Python):Pythonimport struct
 n = 157467392  # substitua pelo seu valor
-print(struct.pack('<I', # **Aplicar 00c36209 \x00\xC3\x62\x09 ``` bytes: ex: n).hex()) o patch:** →> ⚠️ **ALERTA CRÍTICO:** NUNCA copie e cole o comando abaixo sem alterar a variável `$HEX_CALCULADO`. Injetar lixo no offset 1028 corromperá o superblock primário irreversivelmente.
+print(struct.pack('<I', # 00c36209 \x00\xC3\x62\x09 ``` bytes: ex: n).hex()) →> ⚠️ **ALERTA CRÍTICO:** NUNCA copie e cole o comando abaixo sem alterar a variável `$HEX_CALCULADO`. Injetar lixo no offset 1028 corromperá o superblock primário irreversivelmente.
+
+**Aplicar o patch:**
 
 ```bash
 # Substitua a string abaixo pelos bytes gerados no passo anterior
